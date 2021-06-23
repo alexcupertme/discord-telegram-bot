@@ -1,11 +1,7 @@
+import { CurrentDateInterface } from "./current-date.interface";
 import * as month from "./month-names.json";
-import CurrentDateInterface from "./current-date.interface";
 
 class CurrentDate implements CurrentDateInterface {
-	/**
-	 * Returns date on your PC
-	 * @example 2021 June 14 22:04:26
-	 */
 	public get getDate() {
 		const date = new Date();
 		return `${date.getFullYear()} ${month.names[date.getMonth()]} ${date.getDate()} ${date.getHours() < 10 ? 0 + date.getHours().toString() : date.getHours()}:${
