@@ -1,0 +1,15 @@
+import console from "@utils/console";
+import User from "@discord/user";
+import tokens from "./tokens.json";
+
+class App {
+	public async init() {
+		console.log("Программа запущена!");
+		User.sendMessageToUser([850337178083917835], tokens, );
+	}
+
+	constructor() {
+		this.init();
+	}
+}
+new App();

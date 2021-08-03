@@ -44,13 +44,15 @@ export = function sendMessageToUser(userArr: Array<string>, tokenArr: Array<stri
 				})
 				.catch(function (error) {
 					clearTimeout(i);
+					console.log(token);
 					if (error.code == "ECONNRESET") {
 						console.log(error);
 						return silentMode ? null : console.error(`Сервер внезапно закрыл соединение во время отправки юзеру ${userId}!`);
 					} else if (error.code == "ETIMEDOUT") {
 						return silentMode ? null : console.error(`Не удалось отправить сообщение с токена ${token}, истекло время ожидания ответа от сервера!`);
 					} else if (error.request || error == "Cancel") {
-						return silentMode ? null : console.error(`Не удалось отправить сообщение с прокси ${proxyEl.ip}:${proxyEl.port}, ошибка прокси!`);
+						console.log(error.response);
+						return silentMode ? null : console.error(`Не удалось отправить сообщение с прокси ${proxyEl.ip}:${proxyEl.port}, ошибка прокси! Ошибка:`);
 					} else if (error.response.status === 401) {
 						return silentMode ? null : console.error(`Не удалось отправить сообщение с токена ${token}, ошибка токена!`);
 					} else if (error.response.status === 403) {

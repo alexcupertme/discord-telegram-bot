@@ -1,0 +1,106 @@
+import { TokenInterface } from "./token.interface";
+import { proxy } from "@discord/proxy/proxy.interface";
+import console from "@utils/console";
+
+import axios from "axios";
+import randomUseragent from "random-useragent";
+import randomElement from "@utils/random-element";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import axiosRetry from "axios-retry";
+
+class Token implements TokenInterface {
+	public checkToken(tokenArr: Array<string>, proxyArr: Array<proxy>, timeout?: number, silentMode?: boolean): Promise<string[]> {
+		const validTokenArr: Array<string> = [];
+		return Promise.all(
+			tokenArr.map(async (token) => {
+				let source = axios.CancelToken.source();
+				const proxyEl = randomElement.getRandomElement(proxyArr);
+				const proxyAgent = new HttpsProxyAgent({ host: proxyEl.ip, port: proxyEl.port, protocol: proxyEl.protocol === "socks4" || proxyEl.protocol === "socks5" ? proxyEl.protocol : "http" });
+				const userAgent = randomUseragent.getRandom();
+				const i = setTimeout(() => {
+					source.cancel();
+				}, timeout);
+				await axios({
+					method: "GET",
+					url: "https://discord.com/api/v9/users/@me",
+					timeout: timeout || 30000,
+					cancelToken: source.token,
+					headers: {
+						"Content-Type": "application/json",
+						"User-Agent": userAgent,
+						Authorization: token,
+					},
+					proxy: false,
+					httpsAgent: proxyAgent,
+				})
+					.then(async (res) => {
+						clearTimeout(i);
+						if (!res.data.verified) {
+							return silentMode ? null : console.warn(`Токен ${token} без верификации!`);
+						}
+						let source2 = axios.CancelToken.source();
+						const i2 = setTimeout(() => {
+							source2.cancel();
+						}, timeout);
+						await axios({
+							method: "POST",
+							url: "https://discord.com/api/v9/users/@me/channels",
+							timeout: timeout || 30000,
+							cancelToken: source2.token,
+							headers: {
+								"Content-Type": "application/json",
+								"User-Agent": userAgent,
+								Authorization: token,
+							},
+							proxy: false,
+							httpsAgent: proxyAgent,
+							data: { recipients: [] },
+						})
+							.then(async (res) => {
+								clearTimeout(i2);
+								if (res.data) {
+									validTokenArr.push(token);
+									console.success(`Токен ${token} валидный!`);
+								} else console.log(res);
+							})
+							.catch((error) => {
+								clearTimeout(i2);
+								if (res.data.code == 40002) {
+									return silentMode ? null : console.warn(`Токен ${token} заморожен!`);
+								} else if (error.response && error.response.data && error.response.data.retry_after) {
+									axiosRetry(axios, {
+										retryDelay: (retryCount) => {
+											return retryCount * 1500;
+										},
+									});
+								} else if (error == "Cancel") {
+									return silentMode ? null : console.error(`Не удалось проверить токен ${token}, ошибка прокси!`);
+								} else {
+									return silentMode ? null : console.critical("Unhandler error:" + error);
+								}
+							});
+					})
+					.catch(function (error) {
+						clearTimeout(i);
+						if (error.response && error.response.data && error.response.data.message == "401: Unauthorized") {
+							return silentMode ? null : console.warn(`Токен ${token} невалидный!`);
+						} else if (error.response && error.response.data && error.response.data.retry_after) {
+							axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
+						} else if (error.code == "ECONNRESET") {
+							return silentMode ? null : console.error(`Сервер внезапно закрыл соединение для токена ${token}!`);
+						} else if (error.code == "ETIMEDOUT") {
+							return silentMode ? null : console.error(`Не удалось проверить токен ${token}, истекло время ожидания ответа от сервера!`);
+						} else if (error == "Cancel") {
+							return silentMode ? null : console.error(`Не удалось проверить токен ${token}, ошибка прокси!`);
+						} else {
+							return silentMode ? null : console.critical("Unhandler error:" + error);
+						}
+					});
+			})
+		).then(function () {
+			return validTokenArr;
+		});
+	}
+}
+
+export = new Token();

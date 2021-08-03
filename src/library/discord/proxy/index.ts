@@ -26,15 +26,17 @@ class Proxy implements ProxyInterface {
 					proxy: false,
 					httpsAgent: new HttpsProxyAgent({ host: proxyEl.ip, port: proxyEl.port, protocol: proxyEl.protocol === "socks4" || proxyEl.protocol === "socks5" ? proxyEl.protocol : "http" }),
 				})
-					.then(() => {
+					.then(async (res) => {
 						clearTimeout(i);
-						validProxyArr.push(proxyEl);
-						silentMode ? null : console.success("Прокси " + proxyEl.ip + ":" + proxyEl.port + " рабочий");
+						if (res.status == 200 && res.data.toString().includes("discord")) {
+							validProxyArr.push(proxyEl);
+							silentMode ? null : console.success("Прокси " + proxyEl.ip + ":" + proxyEl.port + " рабочий!");
+						} else console.log(res);
 					})
 					.catch(function (error) {
 						clearTimeout(i);
 						if (error.response || error.request || error == "Cancel") {
-							return silentMode ? null : console.warn("Прокси " + proxyEl.ip + ":" + proxyEl.port + " нерабочий");
+							return silentMode ? null : console.warn("Прокси " + proxyEl.ip + ":" + proxyEl.port + " нерабочий!");
 						} else {
 							return silentMode ? null : console.critical("Unhandler error:" + error);
 						}
